@@ -1,7 +1,16 @@
-export default function App() {
+import React from "react";
+import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
+import Home from "./pages/Home";
+
+function App() {
   return (
-    <div className="flex h-screen items-center justify-center bg-gray-900 text-white text-4xl font-bold">
-      Hello World
+    <div className="min-h-screen bg-grey-50">
+      <Navbar />
+      <Home />
+      <Footer />
     </div>
   );
 }
+
+export default App;

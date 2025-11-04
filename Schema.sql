@@ -1,99 +1,185 @@
-CREATE TABLE IF NOT EXISTS Warehouse (
-    warehouse_id INT PRIMARY KEY AUTO_INCREMENT,
-    warehouse_name VARCHAR(100) NOT NULL,
-    location VARCHAR(150),
-    manager_name VARCHAR(100),
-    contact_no VARCHAR(15)
+-- ===================================================
+-- Multi-Warehouse Supply Chain Management System
+-- ===================================================
+
+CREATE DATABASE IF NOT EXISTS supply_chain_db;
+USE supply_chain_db;
+
+-- ===================================================
+-- USERS TABLE
+-- ===================================================
+CREATE TABLE users (
+    user_id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    phone VARCHAR(15),
+    pincode CHAR(6) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS Product (
-    product_id INT PRIMARY KEY AUTO_INCREMENT,
-    product_name VARCHAR(100) NOT NULL,
-    category VARCHAR(50),
-    unit_price DECIMAL(10,2),
-    reorder_level INT DEFAULT 10
+-- ===================================================
+-- SUPPLIERS TABLE
+-- ===================================================
+CREATE TABLE suppliers (
+    supplier_id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    phone VARCHAR(15),
+    address_pincode CHAR(6) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS RetailStore (
-    store_id INT PRIMARY KEY AUTO_INCREMENT,
-    store_name VARCHAR(100) NOT NULL,
-    location VARCHAR(150),
-    manager_name VARCHAR(100),
-    contact_no VARCHAR(15)
-);
-
-CREATE TABLE IF NOT EXISTS Supplier (
-    supplier_id INT PRIMARY KEY AUTO_INCREMENT,
+CREATE TABLE supplierlib (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    supplier_id INT NOT NULL,
     supplier_name VARCHAR(100) NOT NULL,
-    contact_no VARCHAR(15),
-    email VARCHAR(100),
-    address VARCHAR(200)
+    product_id INT NOT NULL,
+    product_name VARCHAR(100) NOT NULL,
+    FOREIGN KEY (supplier_id) REFERENCES suppliers(supplier_id),
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
 );
 
-CREATE TABLE IF NOT EXISTS WarehouseStock (
-    stock_id INT PRIMARY KEY AUTO_INCREMENT,
-    warehouse_id INT,
-    product_id INT,
-    quantity INT DEFAULT 0,
-    last_updated DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (warehouse_id) REFERENCES Warehouse(warehouse_id),
-    FOREIGN KEY (product_id) REFERENCES Product(product_id)
+-- ===================================================
+-- WAREHOUSES TABLE
+-- ===================================================
+CREATE TABLE warehouses (
+    warehouse_id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    location_pincode CHAR(6) NOT NULL,
+    capacity INT DEFAULT 0
 );
 
-CREATE TABLE IF NOT EXISTS RetailStock (
-    rstock_id INT PRIMARY KEY AUTO_INCREMENT,
-    store_id INT,
-    product_id INT,
-    quantity INT DEFAULT 0,
-    last_updated DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (store_id) REFERENCES RetailStore(store_id),
-    FOREIGN KEY (product_id) REFERENCES Product(product_id)
-);
-
-CREATE TABLE IF NOT EXISTS PurchaseOrder (
-    order_id INT PRIMARY KEY AUTO_INCREMENT,
+-- ===================================================
+-- PRODUCTS TABLE
+-- ===================================================
+CREATE TABLE products (
+    product_id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    price DECIMAL(10,2) NOT NULL,
+    size VARCHAR(20),
+    rating DECIMAL(2,1) DEFAULT 0.0 CHECK (rating >= 0 AND rating <= 5),
     supplier_id INT,
-    warehouse_id INT,
-    order_date DATE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (supplier_id) REFERENCES suppliers(supplier_id)
+);
+
+-- ===================================================
+-- WAREHOUSE STOCK TABLE
+-- ===================================================
+CREATE TABLE warehouse_stock (
+    stock_id INT AUTO_INCREMENT PRIMARY KEY,
+    warehouse_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity_available INT DEFAULT 0,
+    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (warehouse_id) REFERENCES warehouses(warehouse_id),
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
+);
+
+-- ===================================================
+-- ORDERS TABLE
+-- ===================================================
+CREATE TABLE orders (
+    order_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    order_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('Processing','Packed','Dispatched','Delivered','Cancelled') DEFAULT 'Processing',
     total_amount DECIMAL(10,2),
-    status VARCHAR(50) DEFAULT 'Pending',
-    FOREIGN KEY (supplier_id) REFERENCES Supplier(supplier_id),
-    FOREIGN KEY (warehouse_id) REFERENCES Warehouse(warehouse_id)
+    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
 );
 
-CREATE TABLE IF NOT EXISTS PurchaseOrderDetails (
-    detail_id INT PRIMARY KEY AUTO_INCREMENT,
-    order_id INT,
-    product_id INT,
-    quantity INT,
-    unit_price DECIMAL(10,2),
-    FOREIGN KEY (order_id) REFERENCES PurchaseOrder(order_id),
-    FOREIGN KEY (product_id) REFERENCES Product(product_id)
+-- ===================================================
+-- ORDER ITEMS TABLE
+-- ===================================================
+CREATE TABLE order_items (
+    item_id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT NOT NULL,
+    price DECIMAL(10,2) NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES orders(order_id),
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
 );
 
-CREATE TABLE IF NOT EXISTS Dispatch (
-    dispatch_id INT PRIMARY KEY AUTO_INCREMENT,
+-- ===================================================
+-- ORDER STATUS HISTORY TABLE
+-- ===================================================
+CREATE TABLE order_status (
+    status_id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id INT NOT NULL,
+    status ENUM('Processing','Packed','Dispatched','Delivered','Cancelled') NOT NULL,
+    changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    changed_by VARCHAR(100) DEFAULT 'system',
+    FOREIGN KEY (order_id) REFERENCES orders(order_id)
+);
+
+-- ===================================================
+-- PROCESSING QUEUE TABLE
+-- ===================================================
+CREATE TABLE processing_queue (
+    queue_id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id INT NOT NULL,
+    status ENUM('Pending','Assigned','In_Progress','Completed') DEFAULT 'Pending',
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (order_id) REFERENCES orders(order_id)
+);
+
+-- ===================================================
+-- EMPLOYEES TABLE
+-- ===================================================
+CREATE TABLE employees (
+    employee_id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    role ENUM('Stocker','Packer','Delivery') NOT NULL,
     warehouse_id INT,
-    store_id INT,
-    dispatch_date DATE,
-    status VARCHAR(50) DEFAULT 'In Transit',
-    FOREIGN KEY (warehouse_id) REFERENCES Warehouse(warehouse_id),
-    FOREIGN KEY (store_id) REFERENCES RetailStore(store_id)
+    FOREIGN KEY (warehouse_id) REFERENCES warehouses(warehouse_id)
 );
 
-CREATE TABLE IF NOT EXISTS DispatchDetails (
-    ddetail_id INT PRIMARY KEY AUTO_INCREMENT,
-    dispatch_id INT,
-    product_id INT,
-    quantity INT,
-    FOREIGN KEY (dispatch_id) REFERENCES Dispatch(dispatch_id),
-    FOREIGN KEY (product_id) REFERENCES Product(product_id)
+-- ===================================================
+-- WAREHOUSE QUEUE TABLE
+-- ===================================================
+CREATE TABLE warehouse_queue (
+    wq_id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id INT NOT NULL,
+    warehouse_id INT NOT NULL,
+    assigned_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('Waiting','Picking','Packing','Dispatched','Completed') DEFAULT 'Waiting',
+    assigned_employee INT,
+    notes TEXT,
+    FOREIGN KEY (order_id) REFERENCES orders(order_id),
+    FOREIGN KEY (warehouse_id) REFERENCES warehouses(warehouse_id),
+    FOREIGN KEY (assigned_employee) REFERENCES employees(employee_id)
 );
 
-CREATE TABLE IF NOT EXISTS Users (
-    user_id INT PRIMARY KEY AUTO_INCREMENT,
-    username VARCHAR(50) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    role ENUM('Admin','WarehouseStaff','RetailManager') NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+-- ===================================================
+-- WAREHOUSE QUEUE ITEMS TABLE
+-- ===================================================
+CREATE TABLE warehouse_queue_items (
+    wqi_id INT AUTO_INCREMENT PRIMARY KEY,
+    wq_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT NOT NULL,
+    status ENUM('Pending','Picked','Packed','Shipped') DEFAULT 'Pending',
+    FOREIGN KEY (wq_id) REFERENCES warehouse_queue(wq_id),
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
 );
+
+-- ===================================================
+-- DELIVERY TABLE
+-- ===================================================
+CREATE TABLE delivery (
+    delivery_id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id INT NOT NULL,
+    employee_id INT,
+    status ENUM('Out_for_Delivery','Delivered','Returned') DEFAULT 'Out_for_Delivery',
+    dispatched_at DATETIME,
+    delivered_at DATETIME,
+    FOREIGN KEY (order_id) REFERENCES orders(order_id),
+    FOREIGN KEY (employee_id) REFERENCES employees(employee_id)
+);
+
+
+ALTER TABLE products ADD COLUMN image_url VARCHAR(255);
