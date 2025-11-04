@@ -1,0 +1,1 @@
+1. the "after_processing_queue_insert" trigger does not depend on stock quantity because of an unknown bug.
