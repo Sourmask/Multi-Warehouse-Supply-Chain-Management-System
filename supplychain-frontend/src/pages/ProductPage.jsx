@@ -5,14 +5,21 @@ import axios from "axios";
 function ProductPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+
   const [product, setProduct] = useState(null);
   const [selectedSize, setSelectedSize] = useState(null);
   const [stock, setStock] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const user_id = 1; // mock user for now (you can link with login later)
+  const storedUser = JSON.parse(localStorage.getItem("user"));
+  const user_id = storedUser?.id; // or storedUser?.user_id depending on your DB
 
   useEffect(() => {
+    if (!user_id) {
+      navigate("/login");
+      return;
+    }
+
     const fetchProduct = async () => {
       try {
         const res = await axios.get(`http://localhost:5050/api/products/${id}`);
@@ -24,8 +31,9 @@ function ProductPage() {
         setLoading(false);
       }
     };
+
     fetchProduct();
-  }, [id]);
+  }, [id, user_id, navigate]);
 
   useEffect(() => {
     if (!selectedSize) return;
@@ -37,7 +45,6 @@ function ProductPage() {
         setStock(res.data.quantity_available);
       } catch (err) {
         console.error("Error fetching stock:", err);
-        setStock(null);
       }
     };
     fetchStock();
@@ -45,6 +52,7 @@ function ProductPage() {
 
   const handleBuyNow = async () => {
     if (!selectedSize) return;
+
     try {
       await axios.post("http://localhost:5050/api/buy", {
         user_id,
@@ -52,6 +60,7 @@ function ProductPage() {
         size: selectedSize.size,
         price: selectedSize.price,
       });
+
       navigate("/order-success");
     } catch (err) {
       console.error("Error placing order:", err);
@@ -73,15 +82,8 @@ function ProductPage() {
 
   return (
     <div className="p-8 bg-gray-50 min-h-screen flex flex-col md:flex-row gap-10 justify-center items-start">
-      <div
-        className="p-6 rounded-lg shadow-md w-full md:w-1/2 flex justify-center"
-        style={{ backgroundColor: "#E3E6EB" }}
-      >
-        <img
-          src={product.image_url}
-          alt={product.name}
-          className="w-80 h-80 object-contain"
-        />
+      <div className="p-6 rounded-lg shadow-md w-full md:w-1/2 flex justify-center bg-[#E3E6EB]">
+        <img src={product.image_url} alt={product.name} className="w-80 h-80 object-contain" />
       </div>
 
       <div className="flex flex-col w-full md:w-1/2">
@@ -117,9 +119,7 @@ function ProductPage() {
           onClick={handleBuyNow}
           disabled={stock === 0}
           className={`mt-6 px-6 py-3 rounded text-white text-lg font-semibold transition ${
-            stock === 0
-              ? "bg-gray-400 cursor-not-allowed"
-              : "bg-green-600 hover:bg-green-700"
+            stock === 0 ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"
           }`}
         >
           Buy Now

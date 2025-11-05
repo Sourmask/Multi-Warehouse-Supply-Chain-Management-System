@@ -31,12 +31,6 @@ def buy_product():
             VALUES (%s)
         """, (order_id,))
 
-        # # Step 3️⃣: Log initial order status as 'Waiting'
-        # cursor.execute("""
-        #     INSERT INTO order_status (order_id, status, changed_by)
-        #     VALUES (%s, 'Waiting', 'system')
-        # """, (order_id,))
-
         conn.commit()
 
         return jsonify({
